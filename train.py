@@ -10,7 +10,7 @@ import torch.nn as nn
 
 model = Bert_MLTC()
 criterion = nn.BCELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.999), eps=1e-8, weight_decay=0, amsgrad=False)
+optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4, betas=(0.9, 0.999), eps=1e-8, weight_decay=0, amsgrad=False)
 
 def train(epoch):
     for i, data in enumerate(dataLoader, 0):
