@@ -38,6 +38,8 @@ if __name__ == "__main__":
     parser.add_argument('-pretrained_model',		default='./bert_model',					help='input the bert models file')
     parser.add_argument('-nsize',		default=768,					help='input size')
     parser.add_argument('-outfeatures',		default=200,					help='output size')
+    parser.add_argument('-stock_emb_file',		default='./output/stock.npy',					help='output size')
+    parser.add_argument('-outfeatures',		default=200,					help='output size')
     args = parser.parse_args()
     model = Bert_MLTC(args)
     print(model("This is an input example"))
