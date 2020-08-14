@@ -4,3 +4,5 @@ tmp*
 ./module/*
 ./data/*
 .env
+bert_model/pytorch_model.bin
+toolkit/__pycache__/clean_text.cpython-37.pyc
