@@ -18,11 +18,11 @@ class MyDataSet(DataSet):
 	-------
 	A training Dataset class instance used by DataLoader
 	"""
-    def __init__(self, quadples, params, stock_dict):
+    def __init__(self, quadples, params, stock_set):
         super(MyDataset,self).__init__()
         self.quadples = quadples
         self.p = params
-        self.stock_dict = stock_dict
+        self.stock_set = stock_set
         self.stock_emb = np.load(self.p.stock_emb_file)
 
     def __getitem__(self, index):
@@ -49,7 +49,7 @@ class MyDataSet(DataSet):
 
     def get_stock_embed(self, stock_name):
         stock_id = 0
-        for idx, stock in enumerate(self.stock_dict):
+        for idx, stock in enumerate(self.stock_set):
             if stock == stock_name:
                 stock_id = idx
         return self.stock_emb[stock_id]

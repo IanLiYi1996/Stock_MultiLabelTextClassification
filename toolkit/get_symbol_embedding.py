@@ -32,23 +32,24 @@ def getSent(row):
 
 
 if __name__ == "__main__":
-    # sents = []
-    # bc = BertClient(check_length=False)
-    # result = []
-    # stock = pd.read_csv('./stock_info.csv', usecols=['name', 'main_operation_business', 'operating_scope','org_cn_introduction'])
-    # for index, row in tqdm.tqdm(stock.iterrows()):
-    #     sents = getSent(row)
-    #     while '' in sents:
-    #         sents.remove('')
-    #     while 'nan' in sents:
-    #         sents.remove('nan')
-    #     intro = '|||'.join(sents)
-    #     sents.clear()
-    #     sents.append(intro)
-    #     emb = bc.encode(sents)
-    #     emb = emb.tolist()
-    #     result.append(emb[0])
-    # print(np.array(result).shape)
-    # np.save("stock.npy", np.array(result))
+    sents = []
+    bc = BertClient(check_length=False)
+    result = []
+    stock = pd.read_csv('./data/stock_info.csv', usecols=['name', 'main_operation_business', 'operating_scope','org_cn_introduction'])
+    for index, row in tqdm.tqdm(stock.iterrows()):
+        sents = getSent(row)
+        while '' in sents:
+            sents.remove('')
+        while 'nan' in sents:
+            sents.remove('nan')
+        intro = '|||'.join(sents)
+        sents.clear()
+        sents.append(intro)
+        emb = bc.encode(sents)
+        emb = emb.tolist()
+        result.append(emb[0])
+    print(np.array(result).shape)
+    np.save("stock.npy", np.array(result))
     data = np.load("/mnt/c/Users/liyi_intern/Documents/Codes/BERT_MLTC/output/stock.npy")
     print(data.shape)
+    print(data[0])

@@ -5,7 +5,7 @@ import argparse
 
 import torch
 import torch.nn as nn
-import pandas as pd
+import pandas as pd 
 import numpy as np
 
 from toolkit.clean_text import TextProcess, DataClean
@@ -46,7 +46,6 @@ class Preprocess():
         """
         pd.read_csv(self.p.dataset, usecols=['title','text','stock_name','label'])
         for index, row in stock.iterrows():
-
             title = row['title']
             text = row['text']
             stock = row['stock_name']
@@ -56,12 +55,12 @@ class Preprocess():
             if text is not 'nan':
                 text = procText.process_text(cleaner.clean_text(str(text))).split('。')
             
-    def get_stockDict(self):
-        stock_dict = []
+    def get_stockSet(self):
+        stock_dict = OrderedSet()
         pd.read_csv(self.p.stock_info, usecols=['name'])
         for index, row in stock.iterrows():
-            stock_dict.append(row['name'])
-        return stock_dict
+            stock_dict.add(row['name'])
+        return stock_set
 
 def train(epoch):
     for i, data in enumerate(dataLoader, 0):
