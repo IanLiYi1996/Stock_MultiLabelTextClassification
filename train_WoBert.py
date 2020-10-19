@@ -16,7 +16,7 @@ from bert4keras.snippets import DataGenerator
 from bert4keras.snippets import text_segmentate
 import jieba
 jieba.initialize()
-
+from tokenizers import ByteLevelBPETokenizer
 # 基本参数
 maxlen = 512
 batch_size = 16
