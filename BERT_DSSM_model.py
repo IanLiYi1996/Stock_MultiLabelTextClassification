@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer, BertTokenizer
 import argparse
+# from torchsummary import summary
 #https://pypi.douban.com/simple --load pip resource
 
 class Bert_MLTC(nn.Module):
@@ -22,24 +23,30 @@ class Bert_MLTC(nn.Module):
         self.tokenizer = AutoTokenizer.from_pretrained(args.pretrained_model)
         for p in self.parameters():
             p.requires_grad = False
-        self.linear1 = nn.Linear(args.nsize, args.outfeatures, bias=True)
+        self.linear1 = nn.Linear(args.nsize, args.hiddensize, bias=True)
         self.activation1 = nn.LeakyReLU(0.001)
-        self.linear2 = nn.Linear(args.nsize, args.outfeatures, bias=True)
+        self.linear2 = nn.Linear(args.hiddensize, args.hiddensize, bias=True)
         self.activation2 = nn.LeakyReLU(0.001)
-        self.linear2 = nn.Linear(args.nsize, args.outfeatures, bias=True)
+        self.linear3 = nn.Linear(args.hiddensize, args.outfeatures, bias=True)
         self.activation3 = nn.LeakyReLU(0.001)
 
     def forward(self,q, pos=None, neg=None):
         tokens_q = self.tokenizer.tokenize(q)
-        print("Tokens: {}".format(tokens_q))
+        # print("Tokens: {}".format(tokens_q))
         tokens_ids_q = self.tokenizer.convert_tokens_to_ids(tokens_q)
-        print("Tokens id: {}".format(tokens_ids_q))
+        # print("Tokens id: {}".format(tokens_ids_q))
         tokens_ids_q = self.tokenizer.build_inputs_with_special_tokens(tokens_ids_q)
         tokens_pt_q = torch.tensor([tokens_ids_q])
-        print("Tokens PyTorch: {}".format(tokens_pt_q))
+        # print("Tokens PyTorch: {}".format(tokens_pt_q))
         outputs_q, pooled_q = self.encoder(tokens_pt_q)
-        print("Token wise output: {}, Pooled output: {}".format(outputs_q.shape, pooled_q[0].shape))
+        # print("Token wise output: {}, Pooled output: {}".format(outputs_q.shape, pooled_q[0].shape))
         result = self.linear1(pooled_q[0])
+        result = self.activation1(result)
+        # print("Linear1 output: {}".format(result.size()))
+        result = self.linear2(result)
+        result = self.activation2(result)
+        # print("Linear2 output: {}".format(result.size()))
+        result = self.linear3(result)
         return result
         
     def loss(self,x, y):
@@ -48,9 +55,12 @@ class Bert_MLTC(nn.Module):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-pretrained_model',		default='./bert_model',					help='input the bert models file')
-    parser.add_argument('-nsize',		default=768,					help='input size')
+    parser.add_argument('-nsize', default=768,					help='input size')
     parser.add_argument('-hiddensize',		default=256,					help='hidden units')
     parser.add_argument('-outfeatures',		default=128,					help='output size')
     args = parser.parse_args()
     model = Bert_MLTC(args)
+    # summary(model)
+    # for param in model.parameters():
+    #     print(type(param), param.size())
     print(model("This is an input example"))
