@@ -15,9 +15,9 @@ import argparse
 # from torchsummary import summary
 #https://pypi.douban.com/simple --load pip resource
 
-class Bert_MLTC(nn.Module):
+class BertDSSM(nn.Module):
     def __init__(self, args):
-        super(Bert_MLTC, self).__init__()
+        super(BertDSSM, self).__init__()
         self.args = args
         self.encoder = AutoModel.from_pretrained(args.pretrained_model)
         for p in self.parameters():
@@ -44,8 +44,14 @@ class Bert_MLTC(nn.Module):
         result = self.linear3(result)
         return result
         
-def loss(self,x, y):
-    pass
+def loss(x, y):
+    raise NotImplementedError()
+
+def entropy(p):
+    """ Compute the entropy of a probability distribution """
+    plogp = p * torch.log(p)
+    plogp[p == 0] = 0
+    return -plogp.sum(dim=-1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -54,8 +60,6 @@ if __name__ == "__main__":
     parser.add_argument('-hiddensize',		default=256,					help='hidden units')
     parser.add_argument('-outfeatures',		default=128,					help='output size')
     args = parser.parse_args()
-    model = Bert_MLTC(args)
-    # summary(model)
-    # for param in model.parameters():
-    #     print(type(param), param.size())
-    print(model("This is an input example"))
+    model = BertDSSM(args)
+    example = torch.tensor([[ 101, 1188, 1110, 1126, 7758, 1859,  102]])
+    print(model(example))

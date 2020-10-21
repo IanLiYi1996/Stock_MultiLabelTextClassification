@@ -44,7 +44,7 @@ class Preprocess():
         -------
 
         """
-        pd.read_csv(self.p.dataset, usecols=['title','text','stock_name','label'])
+        stock = pd.read_csv(self.p.dataset, usecols=['title','text','stock_name','label'])
         for index, row in stock.iterrows():
             title = row['title']
             text = row['text']
