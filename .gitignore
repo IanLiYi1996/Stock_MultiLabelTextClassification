@@ -12,3 +12,4 @@ cache_dir/*
 wandb/*
 runs/*
 __pycache__/*
+data/*
