@@ -1,5 +1,4 @@
-  
-#!/usr/bin/env python
+  #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import
@@ -10,7 +9,8 @@ from __future__ import unicode_literals
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import AutoModel, AutoTokenizer, BertTokenizer
+import torch.optim as optim
+from transformers import AutoModel
 import argparse
 # from torchsummary import summary
 #https://pypi.douban.com/simple --load pip resource
@@ -43,9 +43,7 @@ class BertDSSM(nn.Module):
         # print("Linear2 output: {}".format(result.size()))
         result = self.linear3(result)
         return result
-        
-def loss(x, y):
-    raise NotImplementedError()
+
 
 def entropy(p):
     """ Compute the entropy of a probability distribution """
