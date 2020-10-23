@@ -7,8 +7,9 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
 from torch.utils.data import Dataset, DataLoader
-from transformers import AutoTokenizer
+from transformers import AutoModel, AutoTokenizer
 
 
 class TrainDataSet(Dataset):
@@ -24,18 +25,22 @@ class TrainDataSet(Dataset):
 	"""
     def __init__(self, args):
         self.args = args
-        self.data = pd.read_csv(self.args.trainfile)
+        self.data = pd.read_csv(self.args.trainfile, sep="0x10")
         self.query_doc = self.get_symbol_text(self.args.symbol_file)
         self.tokenizer = AutoTokenizer.from_pretrained(self.args.pretrained_model)
+        self.encoder = AutoModel.from_pretrained(args.pretrained_model)
 
     def __getitem__(self, index):
         sample = self.data.iloc[index]
-        query, pos, neg, label = sample['symbol'], sample['pos'], sample['neg'], sample['label']
-        query_pt = self.tokenize(self.query_doc[query])
+        query, pos, neg, label = sample['symbol'], sample['pos'][:self.args.max_seq_len], sample['neg'][:self.args.max_seq_len], sample['label']
+        # print(query, self.query_doc[query], pos, neg)
+        query_pt = self.tokenize(self.query_doc[query][:self.args.max_seq_len])
         pos_pt = self.tokenize(pos)
         neg_pt = self.tokenize(neg)
-
-        return query_pt, pos_pt, neg_pt, label
+        query_pt = self.get_embedding(query_pt)
+        pos_pt = self.get_embedding(pos_pt)
+        neg_pt = self.get_embedding(neg_pt)
+        return query_pt, pos_pt, neg_pt, torch.tensor(label)
 
     def __len__(self):
         return len(self.data)
@@ -46,6 +51,11 @@ class TrainDataSet(Dataset):
         token_ids = self.tokenizer.build_inputs_with_special_tokens(token_ids)
         token_pt = torch.tensor([token_ids])
         return token_pt
+
+    @torch.no_grad()
+    def get_embedding(self, tensors):
+        _, pooled = self.encoder(tensors)
+        return pooled[0]
 
     def get_symbol_text(self, in_file):
         symbol_doc = OrderedDict()
@@ -77,18 +87,21 @@ class TestDataSet(Dataset):
 	"""
     def __init__(self, args):
         self.args = args
-        self.data = pd.read_csv(self.args.testfile)
+        self.data = pd.read_csv(self.args.testfile, sep="0x10")
         self.query_doc = self.get_symbol_text(self.args.symbol_file)
         self.tokenizer = AutoTokenizer.from_pretrained(self.args.pretrained_model)
+        self.encoder = AutoModel.from_pretrained(args.pretrained_model)
 
     def __getitem__(self, index):
         sample = self.data.iloc[index]
-        query, pos, neg, label = sample['symbol'], sample['pos'], sample['neg'], sample['label']
-        query_pt = self.tokenize(self.query_doc[query])
+        query, pos, neg, label = sample['symbol'], sample['pos'][:self.args.max_seq_len], sample['neg'][:self.args.max_seq_len], sample['label']
+        query_pt = self.tokenize(self.query_doc[query][:self.args.max_seq_len])
         pos_pt = self.tokenize(pos)
         neg_pt = self.tokenize(neg)
-
-        return query_pt, pos_pt, neg_pt, label
+        query_pt = self.get_embedding(query_pt)
+        pos_pt = self.get_embedding(pos_pt)
+        neg_pt = self.get_embedding(neg_pt)
+        return query_pt, pos_pt, neg_pt, torch.tensor(label)
 
     def __len__(self):
         return len(self.data)
@@ -99,6 +112,11 @@ class TestDataSet(Dataset):
         token_ids = self.tokenizer.build_inputs_with_special_tokens(token_ids)
         token_pt = torch.tensor([token_ids])
         return token_pt
+    
+    @torch.no_grad()
+    def get_embedding(self, tensors):
+        _, pooled = self.encoder(tensors)
+        return pooled[0]
 
     def get_symbol_text(self, in_file):
         symbol_doc = OrderedDict()
@@ -111,6 +129,7 @@ class TestDataSet(Dataset):
 
     @staticmethod
     def collate_fn(data):
+        data = torch.tensor(data)
         query_pt = torch.stack([_[0] 	for _ in data], dim=0)
         pos_pt = torch.stack([_[1] for _ in data], dim=0)
         neg_pt = torch.stack([_[2] 	for _ in data], dim=0)
@@ -124,12 +143,14 @@ if __name__ =="__main__":
     parser.add_argument('-nsize',		default=768,					help='input size')
     parser.add_argument('-outfeatures',		default=200,					help='output size')
     parser.add_argument('-stock_emb_file',		default='./output/stock.npy',					help='output size')
-    parser.add_argument('-trainfile',		default='./data/train.csv',					help='input the train file')
+    parser.add_argument('-trainfile',		default='./data/DSSM/train.csv',					help='input the train file')
     parser.add_argument('-symbol_file',		default='./data/stock_info.csv',					help='input the symbol file')
-    parser.add_argument('-testfile',		default='./data/test.csv',					help='input the test file')
+    parser.add_argument('-testfile',		default='./data/DSSM/train.csv',					help='input the test file')
+    parser.add_argument('-max_seq_len',		default=128,					help='input the test file')
     args = parser.parse_args()
     
     train_data = TrainDataSet(args)
-    print(train_data[0])
+    for i in range(10):
+        print(train_data[i])
     print(len(train_data))
     # dataLoader = DataLoader(dataset, batch_size=1, shuffle=True)

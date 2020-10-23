@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import logging, logging.config
 from ordered_set import OrderedSet
-from .BERT_DSSM_model import BertDSSM
-from .dataloader import TrainDataSet, TrainDataSet
+from BERT_DSSM_model import BertDSSM
+from dataloader import TrainDataSet, TrainDataSet
 
 import torch
 import torch.nn as nn
@@ -25,22 +25,28 @@ def get_data_loader(dataset_class, batch_size, shuffle=True, num_workers=1):
             collate_fn      = dataset_class.collate_fn
         )
 
-def train_model(args, dataset):
+def train_model(args, dataset, model):
     for epoch in range(args.epoches):
         for step, batch_data in enumerate(iter(get_data_loader(dataset, args.batch_size))):
             query_pt, pos_pt, neg_pt, label = batch_data
             out_q = model.forward(query_pt)
             out_pos = model.forward(pos_pt)
             out_neg = model.forward(neg_pt)
-            cos_qp = torch.cosine_similarity(out_q, out_pos, dim=1)
-            cos_qn = torch.cosine_similarity(out_q, out_neg, dim=1)
-            cos_uni = torch.cat((cos_qp, cos_qn), 1)
-            softmax_qp = F.softmax(cos_uni, dim=1)[:, 0]
-            loss = -torch.log(torch.prod(softmax_qp))
-            print(loss)
-            optimizer.zero_grad()
+            cos_qp = torch.cosine_similarity(query_pt, pos_pt, dim=1)
+            cos_qn = torch.cosine_similarity(query_pt, neg_pt, dim=1)
+            print('cos:{},{}'.format(cos_qp, cos_qn))
+            break
+            cos_uni = torch.stack((cos_qp, cos_qn), dim=1)
+            # print('cos:{}'.format(cos_uni))
+            softmax_qp = F.softmax(cos_uni, dim=1)
+            # print('softmax:{}'.format(softmax_qp))
+            losses = -torch.log(torch.prod(softmax_qp, dim=1))
+            loss = torch.mean(losses)
+            # print('loss:{}'.format(loss))
+            optimizer.zero_grad()   
             loss.backward()
             optimizer.step()
+
 
 def get_logger(name, log_dir, config_dir):
     config_dict = json.load(open( config_dir + 'log_config.json'))
@@ -59,18 +65,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-pretrained_model',		default='./bert_model',					help='input the bert models file')
     parser.add_argument('-nsize',		default=768,					help='input size')
-    parser.add_argument('-outfeatures',		default=200,					help='output size')
+    parser.add_argument('-outfeatures',		default=128,					help='output size')
     parser.add_argument('-stock_info',		default='data/stock_info.csv',					help='data use for stock dict')
     parser.add_argument('-hiddensize',		default=256,					help='hidden units')
     parser.add_argument('-epoches',		default=1,					help='epoch num')
     parser.add_argument('-batch_size',		default=1,					help='hidden units')
-    parser.add_argument('-trainfile',		default='./data/train.csv',					help='input the train file')
+    parser.add_argument('-trainfile',		default='./data/DSSM/train.csv',					help='input the train file')
     parser.add_argument('-symbol_file',		default='./data/stock_info.csv',					help='input the symbol file')
-    parser.add_argument('-testfile',		default='./data/test.csv',					help='input the test file')
+    parser.add_argument('-testfile',		default='./data/DSSM/train.csv',					help='input the test file')
+    parser.add_argument('-max_seq_len',		default=128,					help='input the test file')
     args = parser.parse_args()
     
     model = BertDSSM(args)
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4, betas=(0.9, 0.999), eps=1e-8, weight_decay=0, amsgrad=False)
+    # for name, parameters in model.named_parameters():
+    #     print(name,':',parameters.size())
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-2)
     train_data = TrainDataSet(args)
 
-    # train_model(args, train_data)
+    train_model(args, train_data, model)
