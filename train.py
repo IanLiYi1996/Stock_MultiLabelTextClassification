@@ -13,6 +13,7 @@ from dataloader import TrainDataSet, TrainDataSet
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
 
@@ -34,15 +35,22 @@ def train_model(args, dataset, model):
             out_neg = model.forward(neg_pt)
             cos_qp = torch.cosine_similarity(query_pt, pos_pt, dim=1)
             cos_qn = torch.cosine_similarity(query_pt, neg_pt, dim=1)
-            print('cos:{},{}'.format(cos_qp, cos_qn))
-            break
-            cos_uni = torch.stack((cos_qp, cos_qn), dim=1)
+            margin = torch.full((args.batch_size, 1), args.margin, dtype=torch.float64)
+            zeros = torch.zeros((args.batch_size, 1))
+            losses = cos_qn - cos_qp + margin
+            # print('cos_qn:{}'.format(cos_qn))
+            # print('cos_qp:{}'.format(cos_qp))
+            # print('loss:{}'.format(losses))
+            losses = torch.stack((losses[0].reshape(args.batch_size,1), zeros), dim=1)
+            losses = torch.max(losses, dim=1).values
+            # cos_uni = torch.stack((cos_qp, cos_qn), dim=1)
             # print('cos:{}'.format(cos_uni))
-            softmax_qp = F.softmax(cos_uni, dim=1)
+            # softmax_qp = F.softmax(cos_uni, dim=1)
             # print('softmax:{}'.format(softmax_qp))
-            losses = -torch.log(torch.prod(softmax_qp, dim=1))
+            # losses = -torch.log(torch.prod(softmax_qp, dim=1))
             loss = torch.mean(losses)
-            # print('loss:{}'.format(loss))
+            loss = loss.requires_grad_()
+            print('Epoch:{}       loss:{}       accuracy:{}       precision:{}     recall:{}    f1:{}'.format(epoch,loss,0,0,0,0))
             optimizer.zero_grad()   
             loss.backward()
             optimizer.step()
@@ -68,18 +76,19 @@ if __name__ == "__main__":
     parser.add_argument('-outfeatures',		default=128,					help='output size')
     parser.add_argument('-stock_info',		default='data/stock_info.csv',					help='data use for stock dict')
     parser.add_argument('-hiddensize',		default=256,					help='hidden units')
-    parser.add_argument('-epoches',		default=1,					help='epoch num')
-    parser.add_argument('-batch_size',		default=1,					help='hidden units')
+    parser.add_argument('-epoches',		default=10,					help='epoch num')
+    parser.add_argument('-batch_size',		default=2,					help='hidden units')
     parser.add_argument('-trainfile',		default='./data/DSSM/train.csv',					help='input the train file')
     parser.add_argument('-symbol_file',		default='./data/stock_info.csv',					help='input the symbol file')
     parser.add_argument('-testfile',		default='./data/DSSM/train.csv',					help='input the test file')
     parser.add_argument('-max_seq_len',		default=128,					help='input the test file')
+    parser.add_argument('-margin',		default=0.5,					help='margin value')
     args = parser.parse_args()
     
     model = BertDSSM(args)
     # for name, parameters in model.named_parameters():
     #     print(name,':',parameters.size())
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     train_data = TrainDataSet(args)
 
     train_model(args, train_data, model)
