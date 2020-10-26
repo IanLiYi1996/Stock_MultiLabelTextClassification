@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import logging, logging.config
 from ordered_set import OrderedSet
+from torchsummaryX import summary
 from BERT_DSSM_model import BertDSSM
 from dataloader import TrainDataSet, TrainDataSet
 
@@ -33,8 +34,8 @@ def train_model(args, dataset, model):
             out_q = model.forward(query_pt)
             out_pos = model.forward(pos_pt)
             out_neg = model.forward(neg_pt)
-            cos_qp = torch.cosine_similarity(query_pt, pos_pt, dim=1)
-            cos_qn = torch.cosine_similarity(query_pt, neg_pt, dim=1)
+            cos_qp = torch.cosine_similarity(out_q, out_pos, dim=1)
+            cos_qn = torch.cosine_similarity(out_q, out_neg, dim=1)
             margin = torch.full((args.batch_size, 1), args.margin, dtype=torch.float64)
             zeros = torch.zeros((args.batch_size, 1))
             losses = cos_qn - cos_qp + margin
@@ -50,7 +51,7 @@ def train_model(args, dataset, model):
             # losses = -torch.log(torch.prod(softmax_qp, dim=1))
             loss = torch.mean(losses)
             loss = loss.requires_grad_()
-            print('Epoch:{}       loss:{}       accuracy:{}       precision:{}     recall:{}    f1:{}'.format(epoch,loss,0,0,0,0))
+            print('Epoch:{}       train_loss:{}       accuracy:{}       eval_accuracy{}'.format(epoch,loss,0,0,0))
             optimizer.zero_grad()   
             loss.backward()
             optimizer.step()
@@ -82,13 +83,14 @@ if __name__ == "__main__":
     parser.add_argument('-symbol_file',		default='./data/stock_info.csv',					help='input the symbol file')
     parser.add_argument('-testfile',		default='./data/DSSM/train.csv',					help='input the test file')
     parser.add_argument('-max_seq_len',		default=128,					help='input the test file')
-    parser.add_argument('-margin',		default=0.5,					help='margin value')
+    parser.add_argument('-margin',		default=1.0,					help='margin value')
     args = parser.parse_args()
     
     model = BertDSSM(args)
-    # for name, parameters in model.named_parameters():
-    #     print(name,':',parameters.size())
+    for name, parameters in model.named_parameters():
+        if parameters.requires_grad:
+            print(name,':',parameters.size())
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     train_data = TrainDataSet(args)
-
-    train_model(args, train_data, model)
+    summary(model, torch.ones(1,768))
+    # train_model(args, train_data, model)

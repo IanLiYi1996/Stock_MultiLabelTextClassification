@@ -5,6 +5,13 @@ import random
 import pandas as pd
 import codecs, sys, os
 
+common_negs = []
+other_negs = pd.read_csv('data/neg_data.csv')
+for idx, data in other_negs.iterrows():
+    item = data['title'].replace('nan','')+data['content'].replace('nan','')
+    common_negs.append(item)
+
+
 def get_filename(rootdir):
     filesnames = [ f for f in os.listdir(rootdir) if os.path.isfile(os.path.join(rootdir,f)) ]
     return filesnames
@@ -32,25 +39,33 @@ def dealing_files(filename):
         data = items[6]+str(items[7].split('...')[0])
         pos_data.append(data.replace('nan',''))
     out_file = codecs.open('data/DSSM/result/'+filename, 'w', encoding='utf-8')
-    title = 'symbol0x10pos0x10neg0x10label'+'\n'
+    title = 'symbol\tpos\tneg\tlabel'+'\n'
     out_file.write(title)
     assert(len(pos_data)>0)
     assert(len(neg_data)>0)
+    neg_nums = 3
     for i in range(len(pos_data)):
         j = random.randint(0, len(neg_data)-1)
-        data = str(filename.replace('.csv',''))+'0x10'+pos_data[i]+'0x10'+neg_data[j]+'0x10'+'1'+'\n'
+        k = random.randint(0, len(neg_data)-1)
+        if j == k:
+            k = random.randint(0, len(neg_data)-1)
+        n_negs = neg_data[j].replace('\t','').replace(' ','')+' '+neg_data[k].replace('\t','').replace(' ','')
+        for l in range(0, neg_nums):
+            m = random.randint(0, len(common_negs)-1)
+            n_negs = n_negs+' '+common_negs[m]
+        data = str(filename.replace('.csv',''))+'\t'+pos_data[i]+'\t'+ n_negs+'\t'+'1'+'\n'
         out_file.write(data)
 
 def get_dataset(filename, out_file):
     print(filename)
-    df = pd.read_csv(filename, sep='0x10')
+    df = pd.read_csv(filename, sep='\t')
     fout = codecs.open(out_file, 'a+', encoding='utf-8')
     for i in range(0,130):
         loc = random.randint(0, df.shape[0]-1)
         data = df.iloc[loc].tolist()
         out = str(data[0])
         for j in range(1,len(data)):
-            out = out+'0x10'+str(data[j])
+            out = out+'	'+str(data[j])
         out = out+'\n'
         fout.write(out)
 
@@ -72,7 +87,7 @@ def split_train_test(data):
 if __name__ == "__main__":
     root = 'data/DSSM/result/'
     output = 'data/DSSM/select.csv'
+    for filename in tqdm.tqdm(get_filename(root)):
+        get_dataset(root+filename, output)
+        dealing_files(filename)
     split_train_test(output)
-    # for filename in tqdm.tqdm(get_filename(root)):
-    #     get_dataset(root+filename, output)
-    #     # dealing_files(filename)
