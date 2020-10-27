@@ -69,9 +69,28 @@ def get_logger(name, log_dir, config_dir):
     logger.addHandler(consoleHandler)
     return logger
 
+def accuracy():
+    raise NotImplementedError()
+
+def save_model(model, optimizer, path):
+    state = {
+        'state_dict'	: model.state_dict(),
+        'optimizer'	: optimizer.state_dict()
+    }
+    torch.save(state, path)
+
+def load(path):
+    model = BertDSSM(args)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    state = torch.load(path)
+    model.load_state_dict(state['state_dict'])
+    optimizer.load_state_dict(state['optimizer'])
+    return model, optimizer
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('-name',		default='testrun',					help='Set run name for saving/restoring models')
     parser.add_argument('-pretrained_model',		default='./bert_model',					help='input the bert models file')
     parser.add_argument('-nsize',		default=768,					help='input size')
     parser.add_argument('-outfeatures',		default=128,					help='output size')
@@ -84,8 +103,11 @@ if __name__ == "__main__":
     parser.add_argument('-testfile',		default='./data/DSSM/train.csv',					help='input the test file')
     parser.add_argument('-max_seq_len',		default=128,					help='input the test file')
     parser.add_argument('-margin',		default=1.0,					help='margin value')
+    parser.add_argument('-logdir',         default='./log/',               help='Log directory')
+    parser.add_argument('-config',      default='./config/',            help='Config directory')
     args = parser.parse_args()
     
+    logger = get_logger(args.name, args.logdir, args.config)
     model = BertDSSM(args)
     for name, parameters in model.named_parameters():
         if parameters.requires_grad:
