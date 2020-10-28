@@ -96,8 +96,8 @@ def train_model_listwise(args, dataset, model):
             losses = -torch.log(torch.prod(softmax_qp, dim=1))
             loss = torch.mean(losses)
             loss = loss.requires_grad_()
-            auc = auc()
-            print('Epoch:{}       train_loss:{}       auc:{}'.format(epoch,loss,))
+            auc = calauc(label, cos_uni[0])
+            print('Epoch:{}       train_loss:{}       auc:{}'.format(epoch,loss,auc))
             optimizer.zero_grad()   
             loss.backward()
             optimizer.step()
@@ -119,7 +119,7 @@ def get_logger(name, log_dir, config_dir):
 def accuracy():
     raise NotImplementedError()
 
-def auc(y, pred):
+def calauc(y, pred):
     fpr, tpr, thresholds = metrics.roc_curve(y, pred, pos_label=1)
     auc = metrics.auc(fpr, tpr)
     return auc
