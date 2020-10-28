@@ -116,8 +116,10 @@ def get_logger(name, log_dir, config_dir):
     logger.addHandler(consoleHandler)
     return logger
 
-def accuracy():
-    raise NotImplementedError()
+def accuracy(y, pred):
+    pred = torch.argmax(pred, dim=1)
+    acc = metrics.accuracy_score(y, pred)
+    return acc
 
 def calauc(y, pred):
     fpr, tpr, thresholds = metrics.roc_curve(y, pred, pos_label=1)
