@@ -5,6 +5,8 @@ import sys, json
 import argparse
 import numpy as np
 import pandas as pd
+from sklearn import metrics
+
 import logging, logging.config
 from ordered_set import OrderedSet
 from torchsummaryX import summary
@@ -28,6 +30,9 @@ def get_data_loader(dataset_class, batch_size, shuffle=True, num_workers=1):
         )
 
 def train_model(args, dataset, model):
+    ''' 
+    pairwise
+    '''
     for epoch in range(args.epoches):
         for step, batch_data in enumerate(iter(get_data_loader(dataset, args.batch_size))):
             query_pt, pos_pt, neg_pt, label = batch_data
@@ -56,6 +61,48 @@ def train_model(args, dataset, model):
             loss.backward()
             optimizer.step()
 
+def train_model_listwise(args, dataset, model):
+    ''' 
+    pairwise
+    '''
+    for epoch in range(args.epoches):
+        for step, batch_data in enumerate(iter(get_data_loader(dataset, args.batch_size))):
+            query_pt, pos_pt, neg_pt_1, neg_pt_2, neg_pt_3, neg_pt_4, neg_pt_5, label = batch_data
+            out_q = model.forward(query_pt)
+            out_pos = model.forward(pos_pt)
+            out_neg_1 = model.forward(neg_pt_1)
+            out_neg_2 = model.forward(neg_pt_2)
+            out_neg_3 = model.forward(neg_pt_3)
+            out_neg_4 = model.forward(neg_pt_4)
+            out_neg_5 = model.forward(neg_pt_5)
+            cos_qp = torch.cosine_similarity(out_q, out_pos, dim=1)
+            cos_qn1 = torch.cosine_similarity(out_q, out_neg_1, dim=1)
+            cos_qn2 = torch.cosine_similarity(out_q, out_neg_2, dim=1)
+            cos_qn3 = torch.cosine_similarity(out_q, out_neg_3, dim=1)
+            cos_qn4 = torch.cosine_similarity(out_q, out_neg_4, dim=1)
+            cos_qn5 = torch.cosine_similarity(out_q, out_neg_5, dim=1)
+            # margin = torch.full((args.batch_size, 1), args.margin, dtype=torch.float64)
+            # zeros = torch.zeros((args.batch_size, 1))
+            # losses = cos_qn - cos_qp + margin
+            # print('cos_qn:{}'.format(cos_qn))
+            # print('cos_qp:{}'.format(cos_qp))
+            # print('loss:{}'.format(losses))
+            # losses = torch.stack((losses[0].reshape(args.batch_size,1), zeros), dim=1)
+            # losses = torch.max(losses, dim=1).values
+            cos_uni = torch.stack((cos_qp, cos_qn1, cos_qn2, cos_qn3, cos_qn4, cos_qn5), dim=1)
+            # print('cos:{}'.format(cos_uni))
+            softmax_qp = F.softmax(cos_uni, dim=1)
+            # print('softmax:{}'.format(softmax_qp))
+            losses = -torch.log(torch.prod(softmax_qp, dim=1))
+            loss = torch.mean(losses)
+            loss = loss.requires_grad_()
+            auc = auc()
+            print('Epoch:{}       train_loss:{}       auc:{}'.format(epoch,loss,))
+            optimizer.zero_grad()   
+            loss.backward()
+            optimizer.step()
+
+
 
 def get_logger(name, log_dir, config_dir):
     config_dict = json.load(open( config_dir + 'log_config.json'))
@@ -71,6 +118,11 @@ def get_logger(name, log_dir, config_dir):
 
 def accuracy():
     raise NotImplementedError()
+
+def auc(y, pred):
+    fpr, tpr, thresholds = metrics.roc_curve(y, pred, pos_label=1)
+    auc = metrics.auc(fpr, tpr)
+    return auc
 
 def save_model(model, optimizer, path):
     state = {
