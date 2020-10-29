@@ -107,8 +107,11 @@ def split_train_test(data):
 if __name__ == "__main__":
     root = 'data/DSSM/result/'
     output = 'data/DSSM/select.csv'
-    # for filename in tqdm.tqdm(get_filename(root)):
+    file = []
+    for filename in tqdm.tqdm(get_filename(root)):
+        file.append(filename)
         # dealing_files(filename)
         # break
         # get_dataset('data/DSSM/result/'+filename, output)
-    split_train_test(output)
+    print(file)
+    # split_train_test(output)

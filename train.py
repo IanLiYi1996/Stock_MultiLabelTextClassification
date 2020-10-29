@@ -29,81 +29,6 @@ def get_data_loader(dataset_class, batch_size, shuffle=True, num_workers=1):
             collate_fn      = dataset_class.collate_fn
         )
 
-def train_model(args, dataset, model):
-    ''' 
-    pairwise
-    '''
-    for epoch in range(args.epoches):
-        for step, batch_data in enumerate(iter(get_data_loader(dataset, args.batch_size))):
-            query_pt, pos_pt, neg_pt, label = batch_data
-            out_q = model.forward(query_pt)
-            out_pos = model.forward(pos_pt)
-            out_neg = model.forward(neg_pt)
-            cos_qp = torch.cosine_similarity(out_q, out_pos, dim=1)
-            cos_qn = torch.cosine_similarity(out_q, out_neg, dim=1)
-            margin = torch.full((args.batch_size, 1), args.margin, dtype=torch.float64)
-            zeros = torch.zeros((args.batch_size, 1))
-            losses = cos_qn - cos_qp + margin
-            # print('cos_qn:{}'.format(cos_qn))
-            # print('cos_qp:{}'.format(cos_qp))
-            # print('loss:{}'.format(losses))
-            losses = torch.stack((losses[0].reshape(args.batch_size,1), zeros), dim=1)
-            losses = torch.max(losses, dim=1).values
-            # cos_uni = torch.stack((cos_qp, cos_qn), dim=1)
-            # print('cos:{}'.format(cos_uni))
-            # softmax_qp = F.softmax(cos_uni, dim=1)
-            # print('softmax:{}'.format(softmax_qp))
-            # losses = -torch.log(torch.prod(softmax_qp, dim=1))
-            loss = torch.mean(losses)
-            loss = loss.requires_grad_()
-            print('Epoch:{}       train_loss:{}       accuracy:{}       eval_accuracy{}'.format(epoch,loss,0,0,0))
-            optimizer.zero_grad()   
-            loss.backward()
-            optimizer.step()
-
-def train_model_listwise(args, dataset, model):
-    ''' 
-    pairwise
-    '''
-    for epoch in range(args.epoches):
-        for step, batch_data in enumerate(iter(get_data_loader(dataset, args.batch_size))):
-            query_pt, pos_pt, neg_pt_1, neg_pt_2, neg_pt_3, neg_pt_4, neg_pt_5, label = batch_data
-            out_q = model.forward(query_pt)
-            out_pos = model.forward(pos_pt)
-            out_neg_1 = model.forward(neg_pt_1)
-            out_neg_2 = model.forward(neg_pt_2)
-            out_neg_3 = model.forward(neg_pt_3)
-            out_neg_4 = model.forward(neg_pt_4)
-            out_neg_5 = model.forward(neg_pt_5)
-            cos_qp = torch.cosine_similarity(out_q, out_pos, dim=1)
-            cos_qn1 = torch.cosine_similarity(out_q, out_neg_1, dim=1)
-            cos_qn2 = torch.cosine_similarity(out_q, out_neg_2, dim=1)
-            cos_qn3 = torch.cosine_similarity(out_q, out_neg_3, dim=1)
-            cos_qn4 = torch.cosine_similarity(out_q, out_neg_4, dim=1)
-            cos_qn5 = torch.cosine_similarity(out_q, out_neg_5, dim=1)
-            # margin = torch.full((args.batch_size, 1), args.margin, dtype=torch.float64)
-            # zeros = torch.zeros((args.batch_size, 1))
-            # losses = cos_qn - cos_qp + margin
-            # print('cos_qn:{}'.format(cos_qn))
-            # print('cos_qp:{}'.format(cos_qp))
-            # print('loss:{}'.format(losses))
-            # losses = torch.stack((losses[0].reshape(args.batch_size,1), zeros), dim=1)
-            # losses = torch.max(losses, dim=1).values
-            cos_uni = torch.stack((cos_qp, cos_qn1, cos_qn2, cos_qn3, cos_qn4, cos_qn5), dim=1)
-            # print('cos:{}'.format(cos_uni))
-            softmax_qp = F.softmax(cos_uni, dim=1)
-            # print('softmax:{}'.format(softmax_qp))
-            losses = -torch.log(torch.prod(softmax_qp, dim=1))
-            loss = torch.mean(losses)
-            loss = loss.requires_grad_()
-            auc = calauc(label, cos_uni[0])
-            print('Epoch:{}       train_loss:{}       auc:{}'.format(epoch,loss,auc))
-            optimizer.zero_grad()   
-            loss.backward()
-            optimizer.step()
-
-
-
 def get_logger(name, log_dir, config_dir):
     config_dict = json.load(open( config_dir + 'log_config.json'))
     config_dict['handlers']['file_handler']['filename'] = log_dir + name.replace('/', '-')
@@ -142,6 +67,100 @@ def load(path):
     return model, optimizer
 
 
+def loss_pairwise(margin, score_pos, score_neg):
+    margin = torch.full((1, 1), margin, dtype=torch.float64)
+    loss = score_neg - score_pos + margin
+    zero = torch.zeros_like(loss)
+    zero = zero.double()
+    zero = zero.requires_grad_()
+    loss = torch.max(loss, zero)
+    loss = torch.mean(loss)
+    loss = loss.requires_grad_()
+    return loss
+
+
+def train_model(args, dataset, model):
+    ''' 
+    pairwise
+    '''
+    for epoch in range(args.epoches):
+        for step, batch_data in enumerate(iter(get_data_loader(dataset, args.batch_size))):
+            query_pt, pos_pt, neg_pt, label = batch_data
+            out_q = model.forward(query_pt)
+            out_pos = model.forward(pos_pt)
+            out_neg = model.forward(neg_pt)
+            cos_qp = torch.cosine_similarity(out_q, out_pos, dim=1)
+            cos_qn = torch.cosine_similarity(out_q, out_neg, dim=1)
+            cos_uni = torch.stack((cos_qp, cos_qn), dim=1)
+            pred = torch.argmax(cos_uni, dim=1)
+            acc = calauc(label.tolist(), pred.tolist())
+            margin = torch.full((args.batch_size, 1), args.margin, dtype=torch.float64)
+            losses = cos_qn - cos_qp + margin
+            zero = torch.zeros_like(losses)
+            zero = zero.float()
+            zero = zero.requires_grad_()
+            # print('cos_qn:{}'.format(cos_qn))
+            # print('cos_qp:{}'.format(cos_qp))
+            # print('loss:{}'.format(losses))
+            # cos_uni = torch.stack((cos_qp, cos_qn), dim=1)
+            # print('cos:{}'.format(cos_uni))
+            # softmax_qp = F.softmax(cos_uni, dim=1)
+            # print('softmax:{}'.format(softmax_qp))
+            # losses = -torch.log(torch.prod(softmax_qp, dim=1))
+            losses = torch.max(losses, zero)
+            loss = torch.mean(losses)
+            loss = loss.requires_grad_()
+            print('Epoch:{}       train_loss:{}       accuracy:{}       eval_accuracy{}'.format(epoch,loss, acc, 0))
+            optimizer.zero_grad()   
+            loss.backward()
+            optimizer.step()
+
+
+def train_model_listwise(args, dataset, model,optimizer):
+    ''' 
+    listwise
+    '''
+    for epoch in range(args.epoches):
+        for step, batch_data in enumerate(iter(get_data_loader(dataset, args.batch_size))):
+            query_pt, pos_pt, neg_pt_1, neg_pt_2, neg_pt_3, neg_pt_4, label = batch_data
+            out_q = model.forward(query_pt)
+            out_pos = model.forward(pos_pt)
+            out_neg_1 = model.forward(neg_pt_1)
+            out_neg_2 = model.forward(neg_pt_2)
+            out_neg_3 = model.forward(neg_pt_3)
+            out_neg_4 = model.forward(neg_pt_4)
+            cos_qp = torch.cosine_similarity(out_q, out_pos, dim=1)
+            cos_qn1 = torch.cosine_similarity(out_q, out_neg_1, dim=1)
+            cos_qn2 = torch.cosine_similarity(out_q, out_neg_2, dim=1)
+            cos_qn3 = torch.cosine_similarity(out_q, out_neg_3, dim=1)
+            cos_qn4 = torch.cosine_similarity(out_q, out_neg_4, dim=1)
+            cos_uni = torch.stack((cos_qp, cos_qn1, cos_qn2, cos_qn3, cos_qn4), dim=1)
+            l1 = loss_pairwise(0.3,cos_qp, cos_qn1)
+            l2 = loss_pairwise(0.4,cos_qp, cos_qn2)
+            l3 = loss_pairwise(0.5,cos_qp, cos_qn3)
+            l4 = loss_pairwise(0.6,cos_qp, cos_qn4)
+            # dif1 = torch.sub(cos_qn1, cos_qp)
+            # # print('diff {} .size{}'.format(dif1, dif1.size()))
+            # dif2 = torch.sub(cos_qn2, cos_qp)
+            # dif3 = torch.sub(cos_qn3, cos_qp)
+            # dif4 = torch.sub(cos_qn4, cos_qp)
+            # l1 = torch.log(1+torch.exp(dif1))
+            # l2 = torch.log(1+torch.exp(dif2))
+            # l3 = torch.log(1+torch.exp(dif3))
+            # l4 = torch.log(1+torch.exp(dif4))
+            l = torch.stack((l1, l2, l3, l4), dim=0)
+            loss = torch.sum(l)
+            loss = loss.requires_grad_()
+            # print(label[0], softmax_qp[0])
+            y = label.clone()
+            pred = cos_uni.clone()
+            auc = calauc(y[0].tolist(), pred[0].tolist())
+            print('Epoch:{}   step:{}   train_loss:{}   auc:{}'.format(epoch, step,loss,auc))
+            optimizer.zero_grad()   
+            loss.backward()
+            optimizer.step()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-name',		default='testrun',					help='Set run name for saving/restoring models')
@@ -151,7 +170,7 @@ if __name__ == "__main__":
     parser.add_argument('-stock_info',		default='data/stock_info.csv',					help='data use for stock dict')
     parser.add_argument('-hiddensize',		default=256,					help='hidden units')
     parser.add_argument('-epoches',		default=10,					help='epoch num')
-    parser.add_argument('-batch_size',		default=2,					help='hidden units')
+    parser.add_argument('-batch_size',		default=1,					help='hidden units')
     parser.add_argument('-trainfile',		default='./data/DSSM/train.csv',					help='input the train file')
     parser.add_argument('-symbol_file',		default='./data/stock_info.csv',					help='input the symbol file')
     parser.add_argument('-testfile',		default='./data/DSSM/train.csv',					help='input the test file')
@@ -163,10 +182,11 @@ if __name__ == "__main__":
     
     logger = get_logger(args.name, args.logdir, args.config)
     model = BertDSSM(args)
-    for name, parameters in model.named_parameters():
-        if parameters.requires_grad:
-            print(name,':',parameters.size())
+    # for name, parameters in model.named_parameters():
+    #     if parameters.requires_grad:
+    #         print(name,':',parameters.size())
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     train_data = TrainDataSet(args)
-    summary(model, torch.ones(1,768))
+    # summary(model, torch.ones(1,768))
+    train_model_listwise(args, train_data, model, optimizer)
     # train_model(args, train_data, model)

@@ -42,11 +42,10 @@ class TrainDataSet(Dataset):
         pos_pt = self.get_embedding(pos_pt)
         negs_pt = []
         for i in range(0, len(negs)):
-            print(i)
             neg_pt = self.tokenize(negs[i][:self.args.max_seq_len]) 
             neg_pt = self.get_embedding(neg_pt)
             negs_pt.append(neg_pt)
-        return query_pt, pos_pt, negs_pt[0],negs_pt[1], negs_pt[2],negs_pt[3],negs_pt[4], torch.tensor(labels)
+        return query_pt, pos_pt, negs_pt[0],negs_pt[1], negs_pt[2],negs_pt[3], torch.tensor(labels[:5])
 
     def __len__(self):
         return len(self.data)
@@ -80,9 +79,9 @@ class TrainDataSet(Dataset):
         neg_pt_2 = torch.stack([_[3] 	for _ in data], dim=0)
         neg_pt_3 = torch.stack([_[4] 	for _ in data], dim=0)
         neg_pt_4 = torch.stack([_[5] 	for _ in data], dim=0)
-        neg_pt_5 = torch.stack([_[6] 	for _ in data], dim=0)
-        label = torch.stack([_[7] 	for _ in data], dim=0)
-        return query_pt, pos_pt, neg_pt_1, neg_pt_2, neg_pt_3, neg_pt_4, neg_pt_5, label
+        # neg_pt_5 = torch.stack([_[6] 	for _ in data], dim=0)
+        label = torch.stack([_[6] 	for _ in data], dim=0)
+        return query_pt, pos_pt, neg_pt_1, neg_pt_2, neg_pt_3, neg_pt_4, label
 
 class TestDataSet(Dataset):
     """
