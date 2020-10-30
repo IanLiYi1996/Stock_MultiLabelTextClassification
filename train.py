@@ -114,6 +114,8 @@ def train_model(args, dataset, model):
             optimizer.zero_grad()   
             loss.backward()
             optimizer.step()
+        path = args.savepath+'epoch'+str(epoch)+'.pt'
+        save_model(model, optimizer, path)
 
 
 def train_model_listwise(args, dataset, model,optimizer):
@@ -156,9 +158,11 @@ def train_model_listwise(args, dataset, model,optimizer):
             pred = cos_uni.clone()
             auc = calauc(y[0].tolist(), pred[0].tolist())
             print('Epoch:{}   step:{}   train_loss:{}   auc:{}'.format(epoch, step,loss,auc))
-            optimizer.zero_grad()   
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+        path = args.savepath+'epoch'+str(epoch)+'.pt'
+        save_model(model, optimizer, path)
 
 
 if __name__ == "__main__":
@@ -178,6 +182,7 @@ if __name__ == "__main__":
     parser.add_argument('-margin',		default=1.0,					help='margin value')
     parser.add_argument('-logdir',         default='./log/',               help='Log directory')
     parser.add_argument('-config',      default='./config/',            help='Config directory')
+    parser.add_argument('-savepath',      default='./outputs/',            help='Config directory')
     args = parser.parse_args()
     
     logger = get_logger(args.name, args.logdir, args.config)
