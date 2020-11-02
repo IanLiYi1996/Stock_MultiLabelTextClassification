@@ -58,7 +58,7 @@ def save_model(model, optimizer, path):
     }
     torch.save(state, path)
 
-def load(path):
+def load(args, path):
     model = BertDSSM(args)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     state = torch.load(path)
@@ -192,6 +192,6 @@ if __name__ == "__main__":
     #         print(name,':',parameters.size())
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     train_data = TrainDataSet(args)
-    # summary(model, torch.ones(1,768))
-    train_model_listwise(args, train_data, model, optimizer)
+    summary(model, torch.ones(1,768))
+    # train_model_listwise(args, train_data, model, optimizer)
     # train_model(args, train_data, model)
