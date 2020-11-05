@@ -28,7 +28,7 @@ class TrainDataSet(Dataset):
         self.data = pd.read_csv(self.args.trainfile, sep="\t", dtype='str')
         self.query_doc = self.get_symbol_text(self.args.symbol_file)
         self.tokenizer = AutoTokenizer.from_pretrained(self.args.pretrained_model)
-        self.encoder = AutoModel.from_pretrained(args.pretrained_model)
+        self.encoder = AutoModel.from_pretrained(self.args.pretrained_model)
 
     def __getitem__(self, index):
         sample = self.data.iloc[index]

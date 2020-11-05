@@ -19,6 +19,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 
+torch.manual_seed(123456)
+
 
 def get_data_loader(dataset_class, batch_size, shuffle=True, num_workers=1):
     return  DataLoader(
@@ -90,7 +92,9 @@ def train_model(args, dataset, model):
             out_pos = model.forward(pos_pt)
             out_neg = model.forward(neg_pt)
             cos_qp = torch.cosine_similarity(out_q, out_pos, dim=1)
+            cos_qp = torch.full_like(cos_qp, 0.5) + 0.5 * cos_qp
             cos_qn = torch.cosine_similarity(out_q, out_neg, dim=1)
+            cos_qn = torch.full_like(cos_qn, 0.5) + 0.5 * cos_qn
             cos_uni = torch.stack((cos_qp, cos_qn), dim=1)
             pred = torch.argmax(cos_uni, dim=1)
             acc = calauc(label.tolist(), pred.tolist())
@@ -132,11 +136,17 @@ def train_model_listwise(args, dataset, model,optimizer):
             out_neg_3 = model.forward(neg_pt_3)
             out_neg_4 = model.forward(neg_pt_4)
             cos_qp = torch.cosine_similarity(out_q, out_pos, dim=1)
+            cos_qp = torch.full_like(cos_qp, 0.5) + 0.5 * cos_qp
             cos_qn1 = torch.cosine_similarity(out_q, out_neg_1, dim=1)
+            cos_qn1 = torch.full_like(cos_qn1, 0.5) + 0.5 * cos_qn1
             cos_qn2 = torch.cosine_similarity(out_q, out_neg_2, dim=1)
+            cos_qn2 = torch.full_like(cos_qn2, 0.5) + 0.5 * cos_qn2
             cos_qn3 = torch.cosine_similarity(out_q, out_neg_3, dim=1)
+            cos_qn3 = torch.full_like(cos_qn3, 0.5) + 0.5 * cos_qn3
             cos_qn4 = torch.cosine_similarity(out_q, out_neg_4, dim=1)
+            cos_qn4 = torch.full_like(cos_qn4, 0.5) + 0.5 * cos_qn4
             cos_uni = torch.stack((cos_qp, cos_qn1, cos_qn2, cos_qn3, cos_qn4), dim=1)
+            print('Scores: {}'.format(cos_uni.item()))
             l1 = loss_pairwise(0.3,cos_qp, cos_qn1)
             l2 = loss_pairwise(0.4,cos_qp, cos_qn2)
             l3 = loss_pairwise(0.5,cos_qp, cos_qn3)
@@ -175,9 +185,9 @@ if __name__ == "__main__":
     parser.add_argument('-hiddensize',		default=256,					help='hidden units')
     parser.add_argument('-epoches',		default=10,					help='epoch num')
     parser.add_argument('-batch_size',		default=1,					help='hidden units')
-    parser.add_argument('-trainfile',		default='./data/DSSM/train.csv',					help='input the train file')
+    parser.add_argument('-trainfile',		default='./data/DSSM_s2t/train.csv',					help='input the train file')
     parser.add_argument('-symbol_file',		default='./data/stock_info.csv',					help='input the symbol file')
-    parser.add_argument('-testfile',		default='./data/DSSM/train.csv',					help='input the test file')
+    parser.add_argument('-testfile',		default='./data/DSSM_s2t/train.csv',					help='input the test file')
     parser.add_argument('-max_seq_len',		default=128,					help='input the test file')
     parser.add_argument('-margin',		default=1.0,					help='margin value')
     parser.add_argument('-logdir',         default='./log/',               help='Log directory')
@@ -193,5 +203,5 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     train_data = TrainDataSet(args)
     summary(model, torch.ones(1,768))
-    # train_model_listwise(args, train_data, model, optimizer)
+    train_model_listwise(args, train_data, model, optimizer)
     # train_model(args, train_data, model)
