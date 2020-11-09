@@ -69,7 +69,14 @@ def get_scores(args, data, query_doc, model, fileout):
         out_sample = query+'\t--\t'+str(cos_qp)+' '+str(cos_qn) +'\t--\t'+pos+'\t--\t'+neg+'\n'
         fout.write(out_sample)
         
-
+def predict_one(args, query, text, query_doc, model):
+    query_pt = tokenize(query_doc[query][:args.max_seq_len])
+    text_pt = tokenize(text[:args.max_seq_len])
+    out_q = model.forward(query_pt)
+    out_text= model.forward(text_pt)
+    cos_score = torch.cosine_similarity(out_q, out_text, dim=0)
+    cos_score = torch.full_like(cos_score, 0.5) + 0.5 * cos_score
+    print('score: {}'.format(cos_score.item()))
 
 def get_symbol_text(in_file):
     symbol_doc = OrderedDict()
@@ -107,5 +114,9 @@ if __name__ == "__main__":
     file_out = './outputs/result.csv'
     model = load_model(args,model_path)
     data, query_doc = load_dataset(args)
-    get_scores(args, data, query_doc, model, file_out)
-    
+    # get_scores(args, data, query_doc, model, file_out)
+    query = 'YJ'
+    text = '云集APP上买到海鲜被放到丰巢快递柜30小时 这么倒霉的事情到底怪谁。要说，云集APP既然在登录时候表示能会自动收集用户信息，这次事件就是对于用户货件的监控物流未做到位；二是云集APP在邮寄时并未贴生鲜面单，这给了快递人员错误的信息；要我说快递最委屈，照章办事却惹祸上身，冯女士也倒霉，发短信过去没看到，最终结果这个样子。'
+    text2 = '教育大家云集 共议教育治理体系和治理能力现代化.中国教育报-中国教育新闻网10月24日浙江杭州讯（记者 时晓玲）何为大学治理？校长的专业发展应在哪些方面着力？在10月24日举办的浙江外国语学院教育治理研究中心成立仪式及《回望：大学校长口述》新书首发式、加快推进教育治理体系和治理能力现代化高峰论坛上，教育专家就此主题展开讨论。'
+    predict_one(args, query, text, query_doc, model)
+    predict_one(args, query, text2, query_doc, model)
